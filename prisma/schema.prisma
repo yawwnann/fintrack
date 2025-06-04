@@ -1,0 +1,116 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// Model User
+model User {
+  id                    String                 @id @default(auto()) @map("_id") @db.ObjectId
+  email                 String                 @unique
+  name                  String?
+  password              String
+  
+  accounts              Account[]              // Relasi: User memiliki banyak Akun
+  savingGoals           SavingGoal[]           // <--- BARU: Relasi ke SavingGoal
+  posts                 Post[]
+  expenses              Expense[]
+  incomes               Income[]
+  budgetRecommendations BudgetRecommendation[]
+  
+  createdAt             DateTime?              @default(now()) 
+  updatedAt             DateTime?              @updatedAt
+}
+
+// Model Baru: Account (Bank/Wallet)
+model Account {
+  id                    String                 @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String                 @db.ObjectId
+  user                  User                   @relation(fields: [userId], references: [id])
+  name                  String                 // Nama akun, misal "BCA Savings", "DANA Wallet"
+  currentBalance        Float                  @default(0) // Saldo spesifik untuk akun ini
+  type                  String?                // Opsional: "Bank", "E-Wallet", "Cash"
+  
+  expenses              Expense[]              // Relasi: Account memiliki banyak Pengeluaran
+  incomes               Income[]               // Relasi: Account memiliki banyak Pemasukan
+
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+}
+
+// Model Baru: SavingGoal
+model SavingGoal {
+  id                    String                 @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String                 @db.ObjectId
+  user                  User                   @relation(fields: [userId], references: [id])
+  name                  String                 // Nama tujuan tabungan, misal "Beli Sepeda", "Liburan Bali"
+  targetAmount          Float                  // Jumlah target yang ingin dicapai
+  currentSavedAmount    Float                  @default(0) // Jumlah yang sudah dialokasikan untuk tujuan ini
+  isCompleted           Boolean                @default(false) // Apakah tujuan sudah tercapai
+  
+  // Jika Anda ingin melacak setiap alokasi sebagai transaksi terpisah (opsional, untuk history)
+  // allocations           SavingAllocation[] 
+
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+}
+
+// Model Post (tidak berubah)
+model Post {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  content   String?
+  published Boolean  @default(false)
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Model Expense (Sudah dimodifikasi sebelumnya)
+model Expense {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id])
+  accountId   String    @db.ObjectId
+  account     Account   @relation(fields: [accountId], references: [id])
+  amount      Float
+  category    String
+  date        DateTime  @default(now())
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Model Income (Sudah dimodifikasi sebelumnya)
+model Income {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id])
+  accountId   String    @db.ObjectId
+  account     Account   @relation(fields: [accountId], references: [id])
+  amount      Float
+  source      String
+  date        DateTime  @default(now())
+  description String?
+  createdAt   DateTime? @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Model BudgetRecommendation (tidak berubah)
+model BudgetRecommendation {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id])
+  month       DateTime
+  amount      Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([month, userId], name: "month_userId_unique")
+}
