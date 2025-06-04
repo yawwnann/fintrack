@@ -1,4 +1,4 @@
-# Fintrack Backend API
+[# Fintrack Backend API
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -346,3 +346,4 @@ Kontribusi disambut baik! Silakan ajukan pull request atau laporkan masalah.
 ## Lisensi
 
 Proyek ini dilisensikan di bawah [Lisensi MIT](https://opensource.org/licenses/MIT).
+](https://github.com/FindTrack-Project/FinTrack-Backend-Next/blob/main/README.md)
