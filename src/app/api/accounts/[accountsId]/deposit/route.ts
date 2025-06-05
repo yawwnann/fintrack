@@ -1,30 +1,28 @@
 // src/api/app/accounts/[accountId]/deposit/route.ts
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
-import { withCORS, handleCORSPreflight } from "@/lib/cors";
+import { verifyToken } from "@/lib/auth"; // Import utilitas verifikasi JWT yang benar
+import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
 
 const prisma = new PrismaClient();
 
-// PERBAIKAN: Gunakan struktur parameter yang benar untuk Next.js 13+ App Router
+// PERBAIKAN: Gunakan struktur parameter yang diminta (params: Promise<{ accountId: string }>)
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ accountId: string }> }
+  { params }: { params: Promise<{ accountId: string }> } // Mempertahankan tipe params sebagai Promise
 ) {
+  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
   const authHeader = req.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : authHeader || "";
-  const authResult = verifyToken(token);
-  if (!authResult) {
+  const token = authHeader?.split(" ")[1] ?? "";
+  const payload = verifyToken(token);
+  if (!payload) {
     const response = NextResponse.json(
       { message: "Unauthorized: Invalid or missing token." },
       { status: 401 }
     );
     return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
   }
-
-  const userIdFromToken = authResult.userId;
+  const userIdFromToken = payload.userId; // Dapatkan userId dari payload
 
   try {
     // Await params untuk mendapatkan accountId
@@ -88,6 +86,7 @@ export async function POST(
 
     return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
   } catch (error: unknown) {
+    // Gunakan 'unknown' dan refine tipe error
     console.error("Error depositing to account:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";

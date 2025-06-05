@@ -2,22 +2,22 @@
 
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
-import { withCORS, handleCORSPreflight } from "@/lib/cors";
+import { verifyToken } from "@/lib/auth"; // Import utilitas verifikasi JWT yang benar
+import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
 
 const prisma = new PrismaClient();
 
 // --- METHOD: PUT (Update Income) ---
 export async function PUT(
   req: Request,
-  { params }: { params: Promise<{ incomeId: string }> }
+  { params }: { params: Promise<{ incomeId: string }> } // Mempertahankan tipe params sebagai Promise
 ) {
+  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
   const authHeader = req.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : authHeader || "";
-  const authResult = verifyToken(token);
+  const token = authHeader?.split(" ")[1];
+  const authResult = verifyToken(token ?? "");
   if (!authResult || !authResult.userId) {
+    // Pastikan helper CORS digunakan untuk respons error otentikasi
     const response = NextResponse.json(
       { message: "Unauthorized: Invalid or missing token." },
       { status: 401 }
@@ -31,7 +31,7 @@ export async function PUT(
   const userIdFromToken = authResult.userId;
 
   try {
-    // PERBAIKAN: Await params untuk mendapatkan incomeId
+    // Await params untuk mendapatkan incomeId
     const { incomeId } = await params;
 
     const { amount, date, description, source } = await req.json();
@@ -108,7 +108,7 @@ export async function PUT(
         ["PUT", "DELETE"],
         ["Content-Type", "Authorization"]
       );
-    }
+    } // Pastikan ini mengacu pada akun, bukan user
 
     const account = await prisma.account.findUnique({
       where: { id: existingIncome.accountId },
@@ -128,7 +128,7 @@ export async function PUT(
     }
 
     const oldAmount = existingIncome.amount;
-    const amountDifference = amount - oldAmount;
+    const amountDifference = amount - oldAmount; // Update saldo akun
     const updatedAccountBalance = account.currentBalance + amountDifference;
 
     await prisma.account.update({
@@ -160,7 +160,8 @@ export async function PUT(
       ["PUT", "DELETE"],
       ["Content-Type", "Authorization"]
     );
-  } catch (error: unknown) {
+  } catch (error) {
+    // Menggunakan 'unknown' untuk konsistensi penanganan error
     console.error("Error updating income:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -184,13 +185,12 @@ export async function PUT(
 // --- METHOD: DELETE (Delete Income) ---
 export async function DELETE(
   req: Request,
-  { params }: { params: Promise<{ incomeId: string }> }
+  { params }: { params: Promise<{ incomeId: string }> } // Mempertahankan tipe params sebagai Promise
 ) {
+  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
   const authHeader = req.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : authHeader || "";
-  const authResult = verifyToken(token);
+  const token = authHeader?.split(" ")[1];
+  const authResult = verifyToken(token ?? "");
   if (!authResult || !authResult.userId) {
     const response = NextResponse.json(
       { message: "Unauthorized: Invalid or missing token." },
@@ -205,7 +205,7 @@ export async function DELETE(
   const userIdFromToken = authResult.userId;
 
   try {
-    // PERBAIKAN: Await params untuk mendapatkan incomeId
+    // Await params untuk mendapatkan incomeId
     const { incomeId } = await params;
 
     if (!incomeId) {
@@ -246,7 +246,7 @@ export async function DELETE(
         ["PUT", "DELETE"],
         ["Content-Type", "Authorization"]
       );
-    }
+    } // Pastikan ini mengacu pada akun, bukan user
 
     const account = await prisma.account.findUnique({
       where: { id: existingIncome.accountId },
@@ -269,7 +269,7 @@ export async function DELETE(
       where: { id: incomeId },
     });
 
-    const amountToDeduct = existingIncome.amount;
+    const amountToDeduct = existingIncome.amount; // Update saldo akun
     const updatedAccountBalance = account.currentBalance - amountToDeduct;
 
     await prisma.account.update({
@@ -291,6 +291,7 @@ export async function DELETE(
       ["Content-Type", "Authorization"]
     );
   } catch (error: unknown) {
+    // Menggunakan 'unknown' untuk konsistensi penanganan error
     console.error("Error deleting income:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";

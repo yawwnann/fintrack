@@ -2,25 +2,25 @@
 
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
-import { withCORS, handleCORSPreflight } from "@/lib/cors";
+import { verifyToken } from "@/lib/auth"; // Import utilitas verifikasi JWT yang benar
+import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
 
 const prisma = new PrismaClient();
 
 // --- METHOD: PUT (Update Expense) ---
 export async function PUT(
   req: Request,
-  { params }: { params: Promise<{ expenseId: string }> }
+  { params }: { params: Promise<{ expenseId: string }> } // Mempertahankan tipe params sebagai Promise
 ) {
-  const authHeader =
-    req.headers.get("authorization") || req.headers.get("Authorization");
+  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
+  const authHeader = req.headers.get("authorization");
   const token = authHeader?.startsWith("Bearer ")
     ? authHeader.slice(7)
-    : authHeader || "";
-  const authResult = verifyToken(token);
-  if (!authResult || !authResult.userId) {
+    : authHeader ?? "";
+  const authResult = verifyToken(token); // Pass token string
+  if (!authResult?.userId) {
     const response = NextResponse.json(
-      { message: "Invalid or missing authentication token." },
+      { message: "Unauthorized: Invalid or missing token." },
       { status: 401 }
     );
     return withCORS(
@@ -29,10 +29,10 @@ export async function PUT(
       ["Content-Type", "Authorization"]
     );
   }
-  const userIdFromToken = authResult.userId;
+  const userIdFromToken = authResult.userId; // Dapatkan userId dari payload
 
   try {
-    // PERBAIKAN: Await params untuk mendapatkan expenseId
+    // Await params untuk mendapatkan expenseId
     const { expenseId } = await params;
 
     const { amount, date, description, category } = await req.json();
@@ -180,6 +180,7 @@ export async function PUT(
       ["Content-Type", "Authorization"]
     );
   } catch (error: unknown) {
+    // Menggunakan 'unknown' untuk penanganan error yang lebih aman
     console.error("Error updating expense:", error);
     const errorMessage =
       error && typeof error === "object" && "message" in error
@@ -205,17 +206,17 @@ export async function PUT(
 // --- METHOD: DELETE (Delete Expense) ---
 export async function DELETE(
   req: Request,
-  { params }: { params: Promise<{ expenseId: string }> }
+  { params }: { params: Promise<{ expenseId: string }> } // Mempertahankan tipe params sebagai Promise
 ) {
-  const authHeader =
-    req.headers.get("authorization") || req.headers.get("Authorization");
+  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
+  const authHeader = req.headers.get("authorization");
   const token = authHeader?.startsWith("Bearer ")
     ? authHeader.slice(7)
-    : authHeader || "";
+    : authHeader ?? "";
   const authResult = verifyToken(token);
-  if (!authResult || !authResult.userId) {
+  if (!authResult?.userId) {
     const response = NextResponse.json(
-      { message: "Invalid or missing authentication token." },
+      { message: "Unauthorized: Invalid or missing token." },
       { status: 401 }
     );
     return withCORS(
@@ -227,7 +228,7 @@ export async function DELETE(
   const userIdFromToken = authResult.userId;
 
   try {
-    // PERBAIKAN: Await params untuk mendapatkan expenseId
+    // Await params untuk mendapatkan expenseId
     const { expenseId } = await params;
 
     if (!expenseId) {
@@ -313,6 +314,7 @@ export async function DELETE(
       ["Content-Type", "Authorization"]
     );
   } catch (error: unknown) {
+    // Menggunakan 'unknown' untuk penanganan error yang lebih aman
     console.error("Error deleting expense:", error);
     const errorMessage =
       error && typeof error === "object" && "message" in error
@@ -320,7 +322,7 @@ export async function DELETE(
         : "An unexpected error occurred.";
     const errorResponse = NextResponse.json(
       {
-        message: "Failed to delete expense.",
+        message: "Failed to update expense.",
         error: errorMessage,
       },
       { status: 500 }

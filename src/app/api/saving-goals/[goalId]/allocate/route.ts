@@ -2,23 +2,26 @@
 
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken } from "@/lib/auth"; // Import utilitas verifikasi JWT yang benar
 import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
 
 const prisma = new PrismaClient();
 
 // --- METHOD: POST (Allocate Funds to Saving Goal) ---
+// PERBAIKAN: Ubah tanda tangan fungsi untuk konsisten dengan pola params yang disarankan
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ goalId: string }> }
+  context: { params: Promise<{ goalId: string }> } // Mengambil context secara eksplisit
 ) {
+  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
   const authHeader =
     req.headers.get("authorization") || req.headers.get("Authorization");
   const token = authHeader?.startsWith("Bearer ")
     ? authHeader.slice(7)
     : authHeader || "";
   const authResult = verifyToken(token);
-  if (!authResult || !authResult.userId) {
+  if (!authResult?.userId) {
+    // Pastikan helper CORS digunakan untuk respons error otentikasi
     const response = NextResponse.json(
       { message: "Invalid or missing authentication token." },
       { status: 401 }
@@ -28,8 +31,9 @@ export async function POST(
   const userIdFromToken = authResult.userId;
 
   try {
-    // Await the params promise before destructuring
-    const { goalId } = await params;
+    // PERBAIKAN: Akses params langsung dari context.params
+    // const { goalId } = await params; // BARIS INI DIHAPUS
+    const { goalId } = await context.params; // Await the promise before destructuring
 
     const { amount, accountId } = await req.json();
 
@@ -161,6 +165,7 @@ export async function POST(
 
     return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
   } catch (error: unknown) {
+    // Menggunakan 'unknown' untuk konsistensi penanganan error
     console.error("Error allocating funds to saving goal:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";
