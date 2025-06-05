@@ -8,7 +8,7 @@ export function withCORS(
   methods: string[],
   headers: string[]
 ): NextResponse {
-  response.headers.set("Access-Control-Allow-Origin", "*"); // Ganti '*' dengan domain frontend Anda di produksi!
+  response.headers.set("Access-Control-Allow-Origin", "http://localhost:3000"); // Ganti '*' dengan domain frontend Anda di produksi!
   response.headers.set("Access-Control-Allow-Methods", methods.join(", "));
   response.headers.set("Access-Control-Allow-Headers", headers.join(", "));
   return response;
@@ -20,7 +20,7 @@ export function handleCORSPreflight(
   headers: string[]
 ): NextResponse {
   const response = new NextResponse(null, { status: 200 });
-  response.headers.set("Access-Control-Allow-Origin", "*"); // Ganti '*' dengan domain frontend Anda di produksi!
+  response.headers.set("Access-Control-Allow-Origin", "http://localhost:3000"); // Ganti '*' dengan domain frontend Anda di produksi!
   response.headers.set("Access-Control-Allow-Methods", methods.join(", "));
   response.headers.set("Access-Control-Allow-Headers", headers.join(", "));
   response.headers.set("Access-Control-Max-Age", "86400"); // Cache preflight for 24 hours
