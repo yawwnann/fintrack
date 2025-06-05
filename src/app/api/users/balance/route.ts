@@ -2,8 +2,8 @@
 
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
-import { withCORS, handleCORSPreflight } from "@/lib/cors";
+import { verifyToken } from "@/lib/auth"; // Import utilitas verifikasi JWT yang benar
+import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
 
 const prisma = new PrismaClient();
 
@@ -13,23 +13,26 @@ export async function OPTIONS() {
 }
 
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
+  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
+  const authHeader =
+    req.headers.get("authorization") || req.headers.get("Authorization");
   const token = authHeader?.startsWith("Bearer ")
     ? authHeader.slice(7)
     : authHeader || "";
-  const authResult = verifyToken(token);
-
-  if (!authResult) {
+  const payload = verifyToken(token);
+  if (!payload) {
     const response = NextResponse.json(
       { message: "Invalid or missing token." },
       { status: 401 }
     );
     return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
   }
-  const userId = authResult.userId;
+  const userId = payload.userId; // Dapatkan userId dari payload
 
   try {
+    // userId sudah diverifikasi dan didapatkan dari token, jadi tidak perlu validasi body untuk userId
     if (!userId) {
+      // Ini seharusnya tidak terjadi jika verifyToken sukses, tapi sebagai fallback
       const response = NextResponse.json(
         { message: "User ID not found in token." },
         { status: 400 }
@@ -48,14 +51,14 @@ export async function GET(req: Request) {
         { status: 200 }
       );
       return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
-    }
+    } // Tidak perlu mendefinisikan interface Account secara eksplisit jika hanya untuk reduce, Prisma sudah menanganinya
 
-    interface Account {
+    interface AccountBalance {
       currentBalance: number;
     }
 
     const totalBalance = accounts.reduce(
-      (sum: number, account: Account) => sum + account.currentBalance,
+      (sum: number, account: AccountBalance) => sum + account.currentBalance,
       0
     );
 
@@ -64,7 +67,8 @@ export async function GET(req: Request) {
       { status: 200 }
     );
     return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
-  } catch (error) {
+  } catch (error: unknown) {
+    // Menggunakan 'unknown' untuk konsistensi penanganan error
     console.error("Error fetching user balance:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";
