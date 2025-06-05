@@ -3,30 +3,19 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+// Hapus: import { withCORS, handleCORSPreflight } from '@/lib/cors';
 
 const prisma = new PrismaClient();
-
-// --- CORS Headers Configuration ---
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*", // Allow all origins, adjust as needed for production (e.g., specific domains)
-  "Access-Control-Allow-Methods": "POST, OPTIONS", // Allowed methods for this route
-  "Access-Control-Allow-Headers": "Content-Type, Authorization", // Allowed headers
-};
-
-// --- METHOD: OPTIONS (For CORS Preflight Requests) ---
-export async function OPTIONS() {
-  // Respond to CORS preflight requests
-  return NextResponse.json({}, { headers: CORS_HEADERS, status: 200 });
-}
 
 export async function POST(req: Request) {
   try {
     const { email, name, password, initialBalance } = await req.json();
 
     if (!email || !password) {
+      // Hapus withCORS
       return NextResponse.json(
         { message: "Email and password are required" },
-        { status: 400, headers: CORS_HEADERS } // Apply CORS headers
+        { status: 400 }
       );
     }
 
@@ -35,9 +24,10 @@ export async function POST(req: Request) {
     });
 
     if (existingUser) {
+      // Hapus withCORS
       return NextResponse.json(
         { message: "User with this email already exists" },
-        { status: 409, headers: CORS_HEADERS } // Apply CORS headers
+        { status: 409 }
       );
     }
 
@@ -71,7 +61,7 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         message: "User registered successfully and default account created.",
         user: {
@@ -80,20 +70,30 @@ export async function POST(req: Request) {
           name: newUser.name,
         },
       },
-      { status: 201, headers: CORS_HEADERS } // Apply CORS headers
+      { status: 201 }
     );
-  } catch (error) {
+
+    // Hapus: return withCORS(response, ['POST'], ['Content-Type', 'Authorization']);
+    return response; // Kembalikan response langsung
+  } catch (error: unknown) {
     console.error("Error during user registration:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "An unexpected error occurred";
-    return NextResponse.json(
+    let errorMessage = "An unexpected error occurred";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    const errorResponse = NextResponse.json(
       {
         message: "Failed to register user",
         error: errorMessage,
       },
-      { status: 500, headers: CORS_HEADERS } // Apply CORS headers
+      { status: 500 }
     );
+    // Hapus: return withCORS(errorResponse, ['POST'], ['Content-Type', 'Authorization']);
+    return errorResponse; // Kembalikan errorResponse langsung
   } finally {
     await prisma.$disconnect();
   }
 }
+
+// Hapus: export async function OPTIONS(req: Request) { ... }
+// Karena CORS akan dihandle di next.config.js

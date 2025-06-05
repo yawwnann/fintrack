@@ -1,28 +1,19 @@
+// src/api/app/expenses/route.ts
+
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
+// Hapus: import { withCORS, handleCORSPreflight } from '@/lib/cors';
 
 const prisma = new PrismaClient();
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: CORS_HEADERS, status: 200 });
-}
-
+// --- METHOD: POST (Tambah Pengeluaran) ---
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || "";
+  const token = authHeader?.split(" ")[1] ?? "";
   const authResult = verifyToken(token);
-  if (!authResult || !authResult.userId) {
-    return NextResponse.json(
-      { message: "Unauthorized" },
-      { status: 401, headers: CORS_HEADERS }
-    );
+  if (!authResult || !("userId" in authResult)) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   const userId = authResult.userId;
 
@@ -30,23 +21,26 @@ export async function POST(req: Request) {
     const { amount, date, description, category, accountId } = await req.json();
 
     if (typeof amount !== "number" || isNaN(amount) || amount <= 0) {
+      // Hapus withCORS
       return NextResponse.json(
         { message: "Invalid amount. Must be a positive number." },
-        { status: 400, headers: CORS_HEADERS }
+        { status: 400 }
       );
     }
     if (!date || !category || !accountId) {
+      // Hapus withCORS
       return NextResponse.json(
         { message: "Missing required fields: date, category, accountId." },
-        { status: 400, headers: CORS_HEADERS }
+        { status: 400 }
       );
     }
 
     const parsedDate = new Date(date);
     if (isNaN(parsedDate.getTime())) {
+      // Hapus withCORS
       return NextResponse.json(
         { message: "Invalid date format." },
-        { status: 400, headers: CORS_HEADERS }
+        { status: 400 }
       );
     }
 
@@ -56,28 +50,32 @@ export async function POST(req: Request) {
     });
 
     if (!account) {
+      // Hapus withCORS
       return NextResponse.json(
         { message: "Account not found." },
-        { status: 404, headers: CORS_HEADERS }
+        { status: 404 }
       );
     }
     if (account.userId !== userId) {
+      // Hapus withCORS
       return NextResponse.json(
         { message: "Unauthorized: Account does not belong to you." },
-        { status: 403, headers: CORS_HEADERS }
+        { status: 403 }
       );
     }
 
     if (account.currentBalance < amount) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           message:
             "Insufficient balance in selected account. Cannot perform this expense.",
           accountBalance: account.currentBalance,
           expenseAmount: amount,
         },
-        { status: 400, headers: CORS_HEADERS }
+        { status: 400 }
       );
+      // Hapus withCORS
+      return response; // Kembalikan response langsung
     }
 
     const newExpense = await prisma.expense.create({
@@ -94,45 +92,50 @@ export async function POST(req: Request) {
     const updatedAccountBalance = account.currentBalance - amount;
 
     await prisma.account.update({
-      where: { id: accountId },
+      where: { id: account.id },
       data: {
         currentBalance: updatedAccountBalance,
       },
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         message: "Expense added successfully and account balance updated.",
         expense: newExpense,
         newAccountBalance: updatedAccountBalance,
       },
-      { status: 201, headers: CORS_HEADERS }
+      { status: 201 }
     );
+
+    // Hapus: return withCORS(response, ['POST', 'GET'], ['Content-Type', 'Authorization']);
+    return response; // Kembalikan response langsung
   } catch (error: unknown) {
     console.error("Error adding expense or updating account balance:", error);
-    return NextResponse.json(
+    const errorMessage =
+      error && typeof error === "object" && "message" in error
+        ? (error as { message?: string }).message
+        : "An unexpected error occurred.";
+    const errorResponse = NextResponse.json(
       {
         message: "Failed to add expense or update account balance.",
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred.",
+        error: errorMessage,
       },
-      { status: 500, headers: CORS_HEADERS }
+      { status: 500 }
     );
+    // Hapus: return withCORS(errorResponse, ['POST', 'GET'], ['Content-Type', 'Authorization']);
+    return errorResponse; // Kembalikan errorResponse langsung
   } finally {
     await prisma.$disconnect();
   }
 }
+
+// --- METHOD: GET (Lihat Semua Pengeluaran) ---
 export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] || "";
+  const token = authHeader?.split(" ")[1] ?? "";
   const authResult = verifyToken(token);
-  if (!authResult || !authResult.userId) {
-    return NextResponse.json(
-      { message: "Unauthorized" },
-      { status: 401, headers: CORS_HEADERS }
-    );
+  if (!authResult || !("userId" in authResult)) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   const userId = authResult.userId;
 
@@ -143,22 +146,31 @@ export async function GET(req: Request) {
     });
 
     return NextResponse.json(
-      { expenses },
-      { status: 200, headers: CORS_HEADERS }
+      {
+        message: "Expenses fetched successfully.",
+        expenses: expenses,
+      },
+      { status: 200 }
     );
   } catch (error: unknown) {
     console.error("Error fetching expenses:", error);
-    return NextResponse.json(
+    const errorMessage =
+      error && typeof error === "object" && "message" in error
+        ? (error as { message?: string }).message
+        : "An unexpected error occurred";
+    const errorResponse = NextResponse.json(
       {
         message: "Failed to fetch expenses",
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
+        error: errorMessage,
       },
-      { status: 500, headers: CORS_HEADERS }
+      { status: 500 }
     );
+    // Hapus: return withCORS(errorResponse, ['POST', 'GET'], ['Content-Type', 'Authorization']);
+    return errorResponse; // Kembalikan errorResponse langsung
   } finally {
     await prisma.$disconnect();
   }
 }
+
+// Hapus: export async function OPTIONS(req: Request) { ... }
+// Karena CORS akan dihandle di next.config.js

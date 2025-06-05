@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { generateToken } from "@/lib/auth";
-import { withCORS, handleCORSPreflight } from "@/lib/cors";
+// Hapus: import { withCORS, handleCORSPreflight } from '@/lib/cors';
 
 const prisma = new PrismaClient();
 
@@ -13,11 +13,11 @@ export async function POST(req: Request) {
     const { email, password } = await req.json();
 
     if (!email || !password) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Email and password are required" },
         { status: 400 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]); // Gunakan helper
     }
 
     const user = await prisma.user.findUnique({
@@ -25,21 +25,21 @@ export async function POST(req: Request) {
     });
 
     if (!user) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Invalid credentials" },
         { status: 401 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]); // Gunakan helper
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Invalid credentials" },
         { status: 401 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]); // Gunakan helper
     }
 
     const token = generateToken(user.id);
@@ -54,7 +54,8 @@ export async function POST(req: Request) {
       { status: 200 }
     );
 
-    return withCORS(response, ["POST"], ["Content-Type", "Authorization"]); // Gunakan helper
+    // Hapus: return withCORS(response, ['POST'], ['Content-Type', 'Authorization']);
+    return response; // Kembalikan response langsung
   } catch (error: unknown) {
     console.error("Error during login:", error);
     const errorMessage =
@@ -66,12 +67,12 @@ export async function POST(req: Request) {
       },
       { status: 500 }
     );
-    return withCORS(errorResponse, ["POST"], ["Content-Type", "Authorization"]); // Gunakan helper
+    // Hapus: return withCORS(errorResponse, ['POST'], ['Content-Type', 'Authorization']);
+    return errorResponse; // Kembalikan errorResponse langsung
   } finally {
     await prisma.$disconnect();
   }
 }
 
-export async function OPTIONS() {
-    return handleCORSPreflight(['POST', 'OPTIONS'], ['Content-Type', 'Authorization']);
-}
+// Hapus: export async function OPTIONS(req: Request) { ... }
+// Karena CORS akan dihandle di next.config.js

@@ -2,8 +2,8 @@
 
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth"; // Import utilitas verifikasi JWT yang benar
-import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
+import { verifyToken } from "@/lib/auth";
+// Hapus: import { withCORS, handleCORSPreflight } from "@/lib/cors";
 
 const prisma = new PrismaClient();
 
@@ -12,74 +12,49 @@ export async function PUT(
   req: Request,
   { params }: { params: Promise<{ expenseId: string }> } // Mempertahankan tipe params sebagai Promise
 ) {
-  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
   const authHeader = req.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : authHeader ?? "";
-  const authResult = verifyToken(token); // Pass token string
-  if (!authResult?.userId) {
-    const response = NextResponse.json(
+  const token = authHeader?.split(" ")[1] ?? "";
+  const authResult = verifyToken(token);
+  if (!authResult || !authResult.userId) {
+    return NextResponse.json(
       { message: "Unauthorized: Invalid or missing token." },
       { status: 401 }
     );
-    return withCORS(
-      response,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
-    );
   }
-  const userIdFromToken = authResult.userId; // Dapatkan userId dari payload
+  const userIdFromToken = authResult.userId;
 
   try {
-    // Await params untuk mendapatkan expenseId
     const { expenseId } = await params;
 
     const { amount, date, description, category } = await req.json();
 
     if (!expenseId) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Expense ID is required." },
         { status: 400 }
       );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
-      );
     }
     if (typeof amount !== "number" || isNaN(amount) || amount <= 0) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Invalid amount. Must be a positive number." },
         { status: 400 }
       );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
-      );
     }
     if (!date || !category) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Missing required fields: date, category." },
         { status: 400 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
     const parsedDate = new Date(date);
     if (isNaN(parsedDate.getTime())) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Invalid date format." },
         { status: 400 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
 
@@ -89,25 +64,17 @@ export async function PUT(
     });
 
     if (!existingExpense) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Expense not found." },
         { status: 404 }
       );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
-      );
     }
     if (existingExpense.userId !== userIdFromToken) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Unauthorized: You do not own this expense." },
         { status: 403 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
 
@@ -117,14 +84,10 @@ export async function PUT(
     });
 
     if (!account) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Associated account not found." },
         { status: 404 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
 
@@ -140,12 +103,8 @@ export async function PUT(
           increaseAmount: amountDifference,
         },
         { status: 400 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
-      );
+      ); // Hapus withCORS
+      return response;
     }
 
     const updatedAccountBalance = account.currentBalance - amountDifference;
@@ -172,15 +131,10 @@ export async function PUT(
         newAccountBalance: updatedAccountBalance,
       },
       { status: 200 }
-    );
+    ); // Hapus: return withCORS(response, ["PUT", "DELETE"], ["Content-Type", "Authorization"]);
 
-    return withCORS(
-      response,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
-    );
+    return response;
   } catch (error: unknown) {
-    // Menggunakan 'unknown' untuk penanganan error yang lebih aman
     console.error("Error updating expense:", error);
     const errorMessage =
       error && typeof error === "object" && "message" in error
@@ -192,12 +146,8 @@ export async function PUT(
         error: errorMessage,
       },
       { status: 500 }
-    );
-    return withCORS(
-      errorResponse,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
-    );
+    ); // Hapus: return withCORS(errorResponse, ["PUT", "DELETE"], ["Content-Type", "Authorization"]);
+    return errorResponse;
   } finally {
     await prisma.$disconnect();
   }
@@ -208,38 +158,25 @@ export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ expenseId: string }> } // Mempertahankan tipe params sebagai Promise
 ) {
-  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
   const authHeader = req.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : authHeader ?? "";
+  const token = authHeader?.split(" ")[1] ?? "";
   const authResult = verifyToken(token);
-  if (!authResult?.userId) {
-    const response = NextResponse.json(
+  if (!authResult || !authResult.userId) {
+    return NextResponse.json(
       { message: "Unauthorized: Invalid or missing token." },
       { status: 401 }
-    );
-    return withCORS(
-      response,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
     );
   }
   const userIdFromToken = authResult.userId;
 
   try {
-    // Await params untuk mendapatkan expenseId
     const { expenseId } = await params;
 
     if (!expenseId) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Expense ID is required." },
         { status: 400 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
 
@@ -249,25 +186,17 @@ export async function DELETE(
     });
 
     if (!existingExpense) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Expense not found." },
         { status: 404 }
       );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
-      );
     }
     if (existingExpense.userId !== userIdFromToken) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Unauthorized: You do not own this expense." },
         { status: 403 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
 
@@ -277,14 +206,10 @@ export async function DELETE(
     });
 
     if (!account) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Associated account not found." },
         { status: 404 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
 
@@ -306,15 +231,10 @@ export async function DELETE(
         newAccountBalance: updatedAccountBalance,
       },
       { status: 200 }
-    );
+    ); // Hapus: return withCORS(response, ["PUT", "DELETE"], ["Content-Type", "Authorization"]);
 
-    return withCORS(
-      response,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
-    );
+    return response;
   } catch (error: unknown) {
-    // Menggunakan 'unknown' untuk penanganan error yang lebih aman
     console.error("Error deleting expense:", error);
     const errorMessage =
       error && typeof error === "object" && "message" in error
@@ -326,21 +246,12 @@ export async function DELETE(
         error: errorMessage,
       },
       { status: 500 }
-    );
-    return withCORS(
-      errorResponse,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
-    );
+    ); // Hapus: return withCORS(errorResponse, ["PUT", "DELETE"], ["Content-Type", "Authorization"]);
+    return errorResponse;
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Handle OPTIONS requests for CORS preflight
-export async function OPTIONS() {
-  return handleCORSPreflight(
-    ["PUT", "DELETE"],
-    ["Content-Type", "Authorization"]
-  );
-}
+// Hapus: export async function OPTIONS() { ... }
+// Karena CORS akan dihandle di next.config.js

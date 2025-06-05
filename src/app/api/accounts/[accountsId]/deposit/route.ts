@@ -1,48 +1,44 @@
 // src/api/app/accounts/[accountId]/deposit/route.ts
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth"; // Import utilitas verifikasi JWT yang benar
-import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
+import { verifyToken } from "@/lib/auth";
+// Hapus: import { withCORS, handleCORSPreflight } from "@/lib/cors";
 
 const prisma = new PrismaClient();
 
-// PERBAIKAN: Gunakan struktur parameter yang diminta (params: Promise<{ accountId: string }>)
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ accountId: string }> } // Mempertahankan tipe params sebagai Promise
 ) {
-  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1] ?? "";
-  const payload = verifyToken(token);
-  if (!payload) {
-    const response = NextResponse.json(
-      { message: "Unauthorized: Invalid or missing token." },
-      { status: 401 }
-    );
-    return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
+  const authHeader =
+    req.headers.get("authorization") || req.headers.get("Authorization");
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : authHeader || "";
+  const authResult = verifyToken(token);
+  if (!authResult?.userId) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
-  const userIdFromToken = payload.userId; // Dapatkan userId dari payload
+  const userIdFromToken = authResult.userId;
 
   try {
-    // Await params untuk mendapatkan accountId
     const { accountId } = await params;
     const { amount, description } = await req.json();
 
     if (!accountId) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Account ID is required." },
         { status: 400 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
     }
 
     if (typeof amount !== "number" || isNaN(amount) || amount <= 0) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Invalid amount. Must be a positive number." },
         { status: 400 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
     }
 
     const account = await prisma.account.findUnique({
@@ -51,19 +47,19 @@ export async function POST(
     });
 
     if (!account) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Account not found." },
         { status: 404 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
     }
 
     if (account.userId !== userIdFromToken) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Unauthorized: Account does not belong to you." },
         { status: 403 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
     }
 
     const updatedAccountBalance = account.currentBalance + amount;
@@ -82,11 +78,10 @@ export async function POST(
         description: description || null,
       },
       { status: 200 }
-    );
+    ); // Hapus: return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
 
-    return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
+    return response; // Kembalikan response langsung
   } catch (error: unknown) {
-    // Gunakan 'unknown' dan refine tipe error
     console.error("Error depositing to account:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -96,14 +91,12 @@ export async function POST(
         error: errorMessage,
       },
       { status: 500 }
-    );
-    return withCORS(errorResponse, ["POST"], ["Content-Type", "Authorization"]);
+    ); // Hapus: return withCORS(errorResponse, ["POST"], ["Content-Type", "Authorization"]);
+    return errorResponse; // Kembalikan errorResponse langsung
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Handle OPTIONS requests for CORS preflight
-export async function OPTIONS() {
-  return handleCORSPreflight(["POST"], ["Content-Type", "Authorization"]);
-}
+// Hapus: export async function OPTIONS() { ... }
+// Karena CORS akan dihandle di next.config.js
