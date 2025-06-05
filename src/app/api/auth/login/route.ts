@@ -72,7 +72,6 @@ export async function POST(req: Request) {
   }
 }
 
-// Handle OPTIONS requests for CORS preflight
 export async function OPTIONS() {
-  return handleCORSPreflight(["POST"], ["Content-Type", "Authorization"]); // Gunakan helper
+    return handleCORSPreflight(['POST', 'OPTIONS'], ['Content-Type', 'Authorization']);
 }
