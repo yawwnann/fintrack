@@ -3,7 +3,7 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth"; // Import utilitas verifikasi JWT yang benar
-import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
+// Hapus: import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Baris ini harus dihapus
 
 const prisma = new PrismaClient();
 
@@ -14,21 +14,17 @@ export async function PUT(
 ) {
   // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
   const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1];
-  const authResult = verifyToken(token ?? "");
-  if (!authResult || !authResult.userId) {
-    // Pastikan helper CORS digunakan untuk respons error otentikasi
-    const response = NextResponse.json(
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : authHeader || "";
+  const payload = verifyToken(token);
+  if (!payload) {
+    return NextResponse.json(
       { message: "Unauthorized: Invalid or missing token." },
       { status: 401 }
     );
-    return withCORS(
-      response,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
-    );
   }
-  const userIdFromToken = authResult.userId;
+  const userIdFromToken = payload.userId;
 
   try {
     // Await params untuk mendapatkan incomeId
@@ -37,48 +33,32 @@ export async function PUT(
     const { amount, date, description, source } = await req.json();
 
     if (!incomeId) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Income ID is required." },
         { status: 400 }
       );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
-      );
     }
     if (typeof amount !== "number" || isNaN(amount) || amount <= 0) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Invalid amount. Must be a positive number." },
         { status: 400 }
       );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
-      );
     }
     if (!date || !source) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Missing required fields: date, source." },
         { status: 400 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
     const parsedDate = new Date(date);
     if (isNaN(parsedDate.getTime())) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Invalid date format." },
         { status: 400 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
 
@@ -88,25 +68,17 @@ export async function PUT(
     });
 
     if (!existingIncome) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Income not found." },
         { status: 404 }
       );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
-      );
     }
     if (existingIncome.userId !== userIdFromToken) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Unauthorized: You do not own this income." },
         { status: 403 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     } // Pastikan ini mengacu pada akun, bukan user
 
@@ -116,14 +88,10 @@ export async function PUT(
     });
 
     if (!account) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Associated account not found." },
         { status: 404 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
 
@@ -153,15 +121,10 @@ export async function PUT(
         newAccountBalance: updatedAccountBalance,
       },
       { status: 200 }
-    );
+    ); // Hapus withCORS
 
-    return withCORS(
-      response,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
-    );
+    return response;
   } catch (error) {
-    // Menggunakan 'unknown' untuk konsistensi penanganan error
     console.error("Error updating income:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -171,12 +134,8 @@ export async function PUT(
         error: errorMessage,
       },
       { status: 500 }
-    );
-    return withCORS(
-      errorResponse,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
-    );
+    ); // Hapus withCORS
+    return errorResponse;
   } finally {
     await prisma.$disconnect();
   }
@@ -189,34 +148,27 @@ export async function DELETE(
 ) {
   // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
   const authHeader = req.headers.get("authorization");
-  const token = authHeader?.split(" ")[1];
-  const authResult = verifyToken(token ?? "");
-  if (!authResult || !authResult.userId) {
-    const response = NextResponse.json(
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : authHeader || "";
+  const payload = verifyToken(token);
+  if (!payload) {
+    return NextResponse.json(
       { message: "Unauthorized: Invalid or missing token." },
       { status: 401 }
     );
-    return withCORS(
-      response,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
-    );
   }
-  const userIdFromToken = authResult.userId;
+  const userIdFromToken = payload.userId;
 
   try {
     // Await params untuk mendapatkan incomeId
     const { incomeId } = await params;
 
     if (!incomeId) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Income ID is required." },
         { status: 400 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
 
@@ -226,25 +178,17 @@ export async function DELETE(
     });
 
     if (!existingIncome) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Income not found." },
         { status: 404 }
       );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
-      );
     }
     if (existingIncome.userId !== userIdFromToken) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Unauthorized: You do not own this income." },
         { status: 403 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     } // Pastikan ini mengacu pada akun, bukan user
 
@@ -254,14 +198,10 @@ export async function DELETE(
     });
 
     if (!account) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Associated account not found." },
         { status: 404 }
-      );
-      return withCORS(
-        response,
-        ["PUT", "DELETE"],
-        ["Content-Type", "Authorization"]
       );
     }
 
@@ -283,15 +223,10 @@ export async function DELETE(
         newAccountBalance: updatedAccountBalance,
       },
       { status: 200 }
-    );
+    ); // Hapus withCORS
 
-    return withCORS(
-      response,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
-    );
-  } catch (error: unknown) {
-    // Menggunakan 'unknown' untuk konsistensi penanganan error
+    return response;
+  } catch (error) {
     console.error("Error deleting income:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -301,21 +236,12 @@ export async function DELETE(
         error: errorMessage,
       },
       { status: 500 }
-    );
-    return withCORS(
-      errorResponse,
-      ["PUT", "DELETE"],
-      ["Content-Type", "Authorization"]
-    );
+    ); // Hapus withCORS
+    return errorResponse;
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Handle OPTIONS requests for CORS preflight
-export async function OPTIONS() {
-  return handleCORSPreflight(
-    ["PUT", "DELETE"],
-    ["Content-Type", "Authorization"]
-  );
-}
+// Hapus: export async function OPTIONS() { ... }
+// Karena CORS akan dihandle di next.config.js

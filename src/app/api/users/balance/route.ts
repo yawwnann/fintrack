@@ -3,13 +3,13 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth"; // Import utilitas verifikasi JWT yang benar
-import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
+// import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
 
 const prisma = new PrismaClient();
 
 // Handle OPTIONS requests for CORS preflight
 export async function OPTIONS() {
-  return handleCORSPreflight(["GET"], ["Content-Type", "Authorization"]);
+  // return handleCORSPreflight(["GET"], ["Content-Type", "Authorization"]);
 }
 
 export async function GET(req: Request) {
@@ -25,7 +25,8 @@ export async function GET(req: Request) {
       { message: "Invalid or missing token." },
       { status: 401 }
     );
-    return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
+    return response;
+    // return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
   }
   const userId = payload.userId; // Dapatkan userId dari payload
 
@@ -37,7 +38,8 @@ export async function GET(req: Request) {
         { message: "User ID not found in token." },
         { status: 400 }
       );
-      return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
+      return response;
+      // return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
     }
 
     const accounts = await prisma.account.findMany({
@@ -50,7 +52,8 @@ export async function GET(req: Request) {
         { currentBalance: 0, message: "No accounts found for this user." },
         { status: 200 }
       );
-      return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
+      return response;
+      // return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
     } // Tidak perlu mendefinisikan interface Account secara eksplisit jika hanya untuk reduce, Prisma sudah menanganinya
 
     interface AccountBalance {
@@ -66,7 +69,8 @@ export async function GET(req: Request) {
       { currentBalance: totalBalance },
       { status: 200 }
     );
-    return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
+    return response;
+    // return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
   } catch (error: unknown) {
     // Menggunakan 'unknown' untuk konsistensi penanganan error
     console.error("Error fetching user balance:", error);
@@ -79,7 +83,8 @@ export async function GET(req: Request) {
       },
       { status: 500 }
     );
-    return withCORS(errorResponse, ["GET"], ["Content-Type", "Authorization"]);
+    return errorResponse;
+    // return withCORS(errorResponse, ["GET"], ["Content-Type", "Authorization"]);
   } finally {
     await prisma.$disconnect();
   }

@@ -3,53 +3,49 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth"; // Import utilitas verifikasi JWT yang benar
-import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
+// Hapus: import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Baris ini harus dihapus
 
 const prisma = new PrismaClient();
 
 // --- METHOD: POST (Allocate Funds to Saving Goal) ---
-// PERBAIKAN: Ubah tanda tangan fungsi untuk konsisten dengan pola params yang disarankan
+// Mempertahankan tipe params sebagai Promise sesuai permintaan pengguna
 export async function POST(
   req: Request,
   context: { params: Promise<{ goalId: string }> } // Mengambil context secara eksplisit
 ) {
-  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
-  const authHeader =
-    req.headers.get("authorization") || req.headers.get("Authorization");
+  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten: verifyToken(req))
+  const authHeader = req.headers.get("authorization");
   const token = authHeader?.startsWith("Bearer ")
     ? authHeader.slice(7)
-    : authHeader || "";
+    : authHeader ?? "";
   const authResult = verifyToken(token);
-  if (!authResult?.userId) {
-    // Pastikan helper CORS digunakan untuk respons error otentikasi
-    const response = NextResponse.json(
-      { message: "Invalid or missing authentication token." },
+  if (!authResult || !authResult.userId) {
+    return NextResponse.json(
+      { message: "Unauthorized: Invalid or missing token." },
       { status: 401 }
     );
-    return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
   }
   const userIdFromToken = authResult.userId;
 
   try {
-    // PERBAIKAN: Akses params langsung dari context.params
-    // const { goalId } = await params; // BARIS INI DIHAPUS
-    const { goalId } = await context.params; // Await the promise before destructuring
+    // Await params untuk mendapatkan goalId
+    const { goalId } = await context.params; // Mempertahankan await context.params sesuai permintaan pengguna
 
     const { amount, accountId } = await req.json();
 
     if (!goalId) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Saving Goal ID is required." },
         { status: 400 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
     }
     if (!accountId) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Source Account ID is required." },
         { status: 400 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
     }
     if (typeof amount !== "number" || isNaN(amount) || amount <= 0) {
       const response = NextResponse.json(
@@ -58,8 +54,8 @@ export async function POST(
             "Allocation amount is required and must be a positive number.",
         },
         { status: 400 }
-      );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
+      ); // Hapus withCORS
+      return response;
     }
 
     const savingGoal = await prisma.savingGoal.findUnique({
@@ -67,18 +63,18 @@ export async function POST(
     });
 
     if (!savingGoal) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Saving Goal not found." },
         { status: 404 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
     }
     if (savingGoal.userId !== userIdFromToken) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Unauthorized: You do not own this saving goal." },
         { status: 403 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
     }
     if (savingGoal.isCompleted) {
       const response = NextResponse.json(
@@ -87,8 +83,8 @@ export async function POST(
             "Saving Goal is already completed. Cannot allocate more funds.",
         },
         { status: 400 }
-      );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
+      ); // Hapus withCORS
+      return response;
     }
     if (savingGoal.currentSavedAmount + amount > savingGoal.targetAmount) {
       const response = NextResponse.json(
@@ -102,8 +98,8 @@ export async function POST(
             savingGoal.targetAmount - savingGoal.currentSavedAmount,
         },
         { status: 400 }
-      );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
+      ); // Hapus withCORS
+      return response;
     }
 
     const sourceAccount = await prisma.account.findUnique({
@@ -111,18 +107,18 @@ export async function POST(
     });
 
     if (!sourceAccount) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Source Account not found." },
         { status: 404 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
     }
     if (sourceAccount.userId !== userIdFromToken) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "Unauthorized: Source account does not belong to you." },
         { status: 403 }
       );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
     }
     if (sourceAccount.currentBalance < amount) {
       const response = NextResponse.json(
@@ -132,8 +128,8 @@ export async function POST(
           allocationAmount: amount,
         },
         { status: 400 }
-      );
-      return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
+      ); // Hapus withCORS
+      return response;
     }
 
     const [updatedSourceAccount, updatedSavingGoal] = await prisma.$transaction(
@@ -161,11 +157,10 @@ export async function POST(
         isGoalCompleted: updatedSavingGoal.isCompleted,
       },
       { status: 200 }
-    );
+    ); // Hapus: return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
 
-    return withCORS(response, ["POST"], ["Content-Type", "Authorization"]);
-  } catch (error: unknown) {
-    // Menggunakan 'unknown' untuk konsistensi penanganan error
+    return response;
+  } catch (error) {
     console.error("Error allocating funds to saving goal:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -175,14 +170,12 @@ export async function POST(
         error: errorMessage,
       },
       { status: 500 }
-    );
-    return withCORS(errorResponse, ["POST"], ["Content-Type", "Authorization"]);
+    ); // Hapus: return withCORS(errorResponse, ["POST"], ["Content-Type", "Authorization"]);
+    return errorResponse;
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Handle OPTIONS requests for CORS preflight
-export async function OPTIONS() {
-  return handleCORSPreflight(["POST"], ["Content-Type", "Authorization"]);
-}
+// Hapus: export async function OPTIONS() { ... }
+// Karena CORS akan dihandle di next.config.js

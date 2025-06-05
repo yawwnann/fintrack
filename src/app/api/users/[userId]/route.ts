@@ -3,39 +3,39 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
-import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Import helper CORS
+// Hapus: import { withCORS, handleCORSPreflight } from "@/lib/cors"; // Baris ini harus dihapus
 
 const prisma = new PrismaClient();
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ userId: string }> }
+  { params }: { params: Promise<{ userId: string }> } // Mempertahankan tipe params sebagai Promise
 ) {
+  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.startsWith("Bearer ")
     ? authHeader.slice(7)
-    : authHeader || "";
+    : authHeader ?? "";
   const payload = verifyToken(token);
 
   if (!payload) {
-    const response = NextResponse.json(
+    return NextResponse.json(
       { message: "Invalid or missing token." },
       { status: 401 }
     );
-    return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
   }
-  const userIdFromToken = payload.userId;
+  const userIdFromToken = payload.userId; // Dapatkan userId dari payload
 
   try {
-    // Await params before destructuring
+    // Await params sebelum destructuring
     const { userId } = await params;
 
     if (!userId) {
-      const response = NextResponse.json(
+      // Hapus withCORS
+      return NextResponse.json(
         { message: "User ID is required." },
         { status: 400 }
       );
-      return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
     }
 
     if (userId !== userIdFromToken) {
@@ -45,8 +45,8 @@ export async function GET(
             "Unauthorized access: Token does not match requested user ID",
         },
         { status: 403 }
-      );
-      return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
+      ); // Hapus withCORS
+      return response;
     }
 
     const user = await prisma.user.findUnique({
@@ -61,35 +61,26 @@ export async function GET(
     });
 
     if (!user) {
-      const response = NextResponse.json(
-        { message: "User not found." },
-        { status: 404 }
-      );
-      return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
+      return NextResponse.json({ message: "User not found." }, { status: 404 });
     }
 
-    const response = NextResponse.json({ user }, { status: 200 });
-    return withCORS(response, ["GET"], ["Content-Type", "Authorization"]);
+    return NextResponse.json(user);
   } catch (error: unknown) {
+    // Menggunakan 'unknown' untuk konsistensi penanganan error
     console.error("Error fetching user details:", error);
     const errorMessage =
-      typeof error === "object" && error !== null && "message" in error
-        ? (error as { message?: string }).message
-        : "An unexpected error occurred.";
-    const errorResponse = NextResponse.json(
+      error instanceof Error ? error.message : "An unexpected error occurred.";
+    return NextResponse.json(
       {
         message: "Failed to fetch user details.",
         error: errorMessage,
       },
       { status: 500 }
     );
-    return withCORS(errorResponse, ["GET"], ["Content-Type", "Authorization"]);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Handle OPTIONS requests for CORS preflight
-export async function OPTIONS() {
-  return handleCORSPreflight(["GET"], ["Content-Type", "Authorization"]);
-}
+// Hapus: export async function OPTIONS() { ... }
+// Karena CORS akan dihandle di next.config.js
