@@ -74,5 +74,15 @@ export async function POST(req: Request) {
   }
 }
 
-// Hapus: export async function OPTIONS(req: Request) { ... }
-// Karena CORS akan dihandle di next.config.js
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200, // Atau 204 No Content, 200 lebih sering digunakan di Next.js dev
+    headers: {
+      "Access-Control-Allow-Origin": "http://localhost:5000", // Sesuaikan dengan origin frontend Anda
+      "Access-Control-Allow-Methods": "POST", // Hanya metode yang didukung oleh route ini
+      "Access-Control-Allow-Headers": "Content-Type, Authorization", // Header yang digunakan
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
+}

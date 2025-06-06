@@ -9,9 +9,17 @@ const prisma = new PrismaClient();
 
 // Handle OPTIONS requests for CORS preflight
 export async function OPTIONS() {
-  // return handleCORSPreflight(["GET"], ["Content-Type", "Authorization"]);
+  return new NextResponse(null, {
+    status: 200, // Atau 204 No Content, 200 lebih sering digunakan di Next.js dev
+    headers: {
+      "Access-Control-Allow-Origin": "http://localhost:5000", // Sesuaikan dengan origin frontend Anda
+      "Access-Control-Allow-Methods": "GET", // Hanya metode yang didukung oleh route ini
+      "Access-Control-Allow-Headers": "Content-Type, Authorization", // Header yang digunakan
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
 }
-
 export async function GET(req: Request) {
   // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten)
   const authHeader =

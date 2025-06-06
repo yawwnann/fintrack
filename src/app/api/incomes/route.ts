@@ -11,9 +11,17 @@ const CORS_HEADERS = {
 };
 
 export async function OPTIONS() {
-  return NextResponse.json({}, { headers: CORS_HEADERS, status: 200 });
+  return new NextResponse(null, {
+    status: 200, // Atau 204 No Content, 200 lebih sering digunakan di Next.js dev
+    headers: {
+      "Access-Control-Allow-Origin": "http://localhost:5000", // Sesuaikan dengan origin frontend Anda
+      "Access-Control-Allow-Methods": "POST, GET", // Hanya metode yang didukung oleh route ini
+      "Access-Control-Allow-Headers": "Content-Type, Authorization", // Header yang digunakan
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
+    },
+  });
 }
-
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || "";
