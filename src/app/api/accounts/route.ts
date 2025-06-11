@@ -288,7 +288,7 @@ export async function OPTIONS() {
     status: 200,
     headers: {
       "Access-Control-Allow-Origin": "http://localhost:5000",
-      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Methods": "POST, GET, PUT, DELETE, OPTIONS", // Tambahkan PUT dan DELETE
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Access-Control-Allow-Credentials": "true",
       "Access-Control-Max-Age": "86400",
