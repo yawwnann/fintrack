@@ -114,7 +114,7 @@ export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
-      "Access-Control-Allow-Origin": "http://localhost:5000",
+      "Access-Control-Allow-Origin": "https://relaxed-vacherin-3e7bf6.netlify.app/",
       "Access-Control-Allow-Methods": "POST, GET,  OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Access-Control-Allow-Credentials": "true",

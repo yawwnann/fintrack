@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const allowedOrigins = [
-  "http://localhost:5000", // Origin frontend Anda
+  "https://relaxed-vacherin-3e7bf6.netlify.app", // Origin frontend Anda
   // ... origin produksi jika sudah ada
 ];
 

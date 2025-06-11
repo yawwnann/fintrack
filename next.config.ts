@@ -8,7 +8,7 @@ const nextConfig = {
         headers: [
           {
             key: "Access-Control-Allow-Origin",
-            value: "http://localhost:5000",
+            value: "https://relaxed-vacherin-3e7bf6.netlify.app",
           }, // Pastikan ini origin frontend Anda
           {
             key: "Access-Control-Allow-Methods",
