@@ -14,7 +14,7 @@ export async function OPTIONS() {
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { goalId: string } }
 ) {
   const authHeader = request.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || "";
@@ -28,12 +28,12 @@ export async function PUT(
   const userId = authResult.userId;
 
   try {
-    const { id } = params;
+    const { goalId } = params;
     const { name, targetAmount, currentSavedAmount, isCompleted } =
       await request.json();
 
     const existingGoal = await prisma.savingGoal.findUnique({
-      where: { id },
+      where: { id: goalId },
     });
 
     if (!existingGoal) {
@@ -51,7 +51,7 @@ export async function PUT(
     }
 
     const updatedGoal = await prisma.savingGoal.update({
-      where: { id },
+      where: { id: goalId },
       data: {
         name:
           typeof name === "string" && name.trim() !== ""
@@ -90,7 +90,7 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { goalId: string } }
 ) {
   const authHeader = request.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || "";
@@ -104,10 +104,10 @@ export async function DELETE(
   const userId = authResult.userId;
 
   try {
-    const { id } = params;
+    const { goalId } = params;
 
     const existingGoal = await prisma.savingGoal.findUnique({
-      where: { id },
+      where: { id: goalId },
     });
 
     if (!existingGoal) {
@@ -125,7 +125,7 @@ export async function DELETE(
     }
 
     await prisma.savingGoal.delete({
-      where: { id },
+      where: { id: goalId },
     });
 
     return NextResponse.json(
