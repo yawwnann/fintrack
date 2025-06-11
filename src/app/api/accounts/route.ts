@@ -144,6 +144,145 @@ export async function GET(req: Request) {
   }
 }
 
+export async function PUT(req: Request) {
+  const authHeader =
+    req.headers.get("authorization") || req.headers.get("Authorization");
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : authHeader || "";
+  const payload = verifyToken(token);
+  if (!payload) {
+    return NextResponse.json(
+      { message: "Invalid or missing token." },
+      { status: 401 }
+    );
+  }
+  const userId = payload.userId;
+
+  try {
+    const { id, name, currentBalance, type } = await req.json();
+
+    if (!id) {
+      return NextResponse.json(
+        { message: "Account id is required." },
+        { status: 400 }
+      );
+    }
+
+    const account = await prisma.account.findUnique({
+      where: { id: id, userId: userId },
+    });
+
+    if (!account) {
+      return NextResponse.json(
+        { message: "Account not found or not owned by user." },
+        { status: 404 }
+      );
+    }
+
+    const updatedAccount = await prisma.account.update({
+      where: { id: id },
+      data: {
+        name:
+          typeof name === "string" && name.trim() !== ""
+            ? name.trim()
+            : undefined,
+        currentBalance:
+          typeof currentBalance === "number" ? currentBalance : undefined,
+        type: typeof type === "string" ? type : undefined,
+      },
+      select: {
+        id: true,
+        name: true,
+        currentBalance: true,
+        type: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        message: "Account updated successfully.",
+        account: updatedAccount,
+      },
+      { status: 200 }
+    );
+  } catch (error: unknown) {
+    console.error("Error updating account:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "An unexpected error occurred.";
+    return NextResponse.json(
+      {
+        message: "Failed to update account.",
+        error: errorMessage,
+      },
+      { status: 500 }
+    );
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+export async function DELETE(req: Request) {
+  const authHeader =
+    req.headers.get("authorization") || req.headers.get("Authorization");
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : authHeader || "";
+  const payload = verifyToken(token);
+  if (!payload) {
+    return NextResponse.json(
+      { message: "Invalid or missing token." },
+      { status: 401 }
+    );
+  }
+  const userId = payload.userId;
+
+  try {
+    const { id } = await req.json();
+
+    if (!id) {
+      return NextResponse.json(
+        { message: "Account id is required." },
+        { status: 400 }
+      );
+    }
+
+    const account = await prisma.account.findUnique({
+      where: { id: id, userId: userId },
+    });
+
+    if (!account) {
+      return NextResponse.json(
+        { message: "Account not found or not owned by user." },
+        { status: 404 }
+      );
+    }
+
+    await prisma.account.delete({
+      where: { id: id },
+    });
+
+    return NextResponse.json(
+      { message: "Account deleted successfully." },
+      { status: 200 }
+    );
+  } catch (error: unknown) {
+    console.error("Error deleting account:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "An unexpected error occurred.";
+    return NextResponse.json(
+      {
+        message: "Failed to delete account.",
+        error: errorMessage,
+      },
+      { status: 500 }
+    );
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
