@@ -12,10 +12,14 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: CORS_HEADERS, status: 200 });
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { goalId: string } }
-) {
+function extractGoalIdFromUrl(url: string): string | null {
+  // Mengambil goalId dari URL path
+  const match =
+    url.match(/saving-goals\/(.*?)\//) || url.match(/saving-goals\/(.*)$/);
+  return match ? match[1] : null;
+}
+
+export async function PUT(request: Request) {
   const authHeader = request.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || "";
   const authResult = verifyToken(token);
@@ -27,8 +31,15 @@ export async function PUT(
   }
   const userId = authResult.userId;
 
+  const goalId = extractGoalIdFromUrl(request.url);
+  if (!goalId) {
+    return NextResponse.json(
+      { error: "Missing goalId in URL" },
+      { status: 400, headers: CORS_HEADERS }
+    );
+  }
+
   try {
-    const { goalId } = params;
     const { name, targetAmount, currentSavedAmount, isCompleted } =
       await request.json();
 
@@ -88,10 +99,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { goalId: string } }
-) {
+export async function DELETE(request: Request) {
   const authHeader = request.headers.get("authorization");
   const token = authHeader?.split(" ")[1] || "";
   const authResult = verifyToken(token);
@@ -103,9 +111,15 @@ export async function DELETE(
   }
   const userId = authResult.userId;
 
-  try {
-    const { goalId } = params;
+  const goalId = extractGoalIdFromUrl(request.url);
+  if (!goalId) {
+    return NextResponse.json(
+      { error: "Missing goalId in URL" },
+      { status: 400, headers: CORS_HEADERS }
+    );
+  }
 
+  try {
     const existingGoal = await prisma.savingGoal.findUnique({
       where: { id: goalId },
     });
