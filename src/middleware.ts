@@ -4,23 +4,31 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const allowedOrigins = [
-  "https://relaxed-vacherin-3e7bf6.netlify.app", // Origin frontend Anda
-  // ... origin produksi jika sudah ada
+  "https://relaxed-vacherin-3e7bf6.netlify.app",
+  "https://relaxed-vacherin-3e7bf6.netlify.app/",
+  "http://localhost:3000",
+  "http://localhost:3001",
 ];
 
 export function middleware(request: NextRequest) {
-  console.log("Middleware executed for:", request.url); // Tambahkan ini
-  console.log("Request Method:", request.method); // Tambahkan ini
-  console.log("Request Origin:", request.headers.get("origin")); // Tambahkan ini
+  console.log("Middleware executed for:", request.url);
+  console.log("Request Method:", request.method);
+  console.log("Request Origin:", request.headers.get("origin"));
 
   const response = NextResponse.next();
 
   const origin = request.headers.get("origin");
-  if (origin && allowedOrigins.includes(origin)) {
-    response.headers.set("Access-Control-Allow-Origin", origin);
+  if (origin) {
+    // Remove trailing slash for comparison
+    const normalizedOrigin = origin.replace(/\/$/, "");
+    const isAllowed = allowedOrigins.some(
+      (allowed) => allowed.replace(/\/$/, "") === normalizedOrigin
+    );
+
+    if (isAllowed) {
+      response.headers.set("Access-Control-Allow-Origin", origin);
+    }
   }
-  // Hapus else if (!origin && request.url.includes('/api/')) jika ada
-  // Karena itu bisa menyulitkan debugging.
 
   response.headers.set(
     "Access-Control-Allow-Methods",
