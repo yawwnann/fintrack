@@ -10,7 +10,7 @@ export async function OPTIONS() {
     status: 200,
     headers: {
       "Access-Control-Allow-Origin": "http://localhost:5000",
-      "Access-Control-Allow-Methods": "POST, GET, PUT, DELETE, OPTIONS", // Tambahkan PUT dan DELETE
+      "Access-Control-Allow-Methods": "POST, GET,  OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Access-Control-Allow-Credentials": "true",
       "Access-Control-Max-Age": "86400",
@@ -127,7 +127,7 @@ export async function GET(req: Request) {
       { status: 401 }
     );
   }
-  const userId = authResult.userId; // Dapatkan userId dari hasil verifyToken
+  const userId = authResult.userId;
 
   try {
     const userExists = await prisma.user.findUnique({
@@ -165,149 +165,6 @@ export async function GET(req: Request) {
       { status: 500 } // Hapus headers: CORS_HEADERS
     );
     return errorResponse; // Kembalikan errorResponse langsung
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
-export async function PUT(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : authHeader || "";
-  const authResult = verifyToken(token);
-  if (!authResult || !authResult.userId) {
-    return NextResponse.json(
-      { message: "Authentication failed." },
-      { status: 401 }
-    );
-  }
-  const userId = authResult.userId;
-
-  try {
-    const { id, name, targetAmount, currentSavedAmount, isCompleted } =
-      await req.json();
-
-    if (!id) {
-      return NextResponse.json(
-        { message: "Saving goal id is required." },
-        { status: 400 }
-      );
-    }
-
-    const savingGoal = await prisma.savingGoal.findUnique({
-      where: { id: id, userId: userId },
-    });
-
-    if (!savingGoal) {
-      return NextResponse.json(
-        { message: "Saving goal not found or not owned by user." },
-        { status: 404 }
-      );
-    }
-
-    const updatedSavingGoal = await prisma.savingGoal.update({
-      where: { id: id },
-      data: {
-        name:
-          typeof name === "string" && name.trim() !== ""
-            ? name.trim()
-            : undefined,
-        targetAmount:
-          typeof targetAmount === "number" ? targetAmount : undefined,
-        currentSavedAmount:
-          typeof currentSavedAmount === "number"
-            ? currentSavedAmount
-            : undefined,
-        isCompleted: typeof isCompleted === "boolean" ? isCompleted : undefined,
-      },
-      select: {
-        id: true,
-        name: true,
-        targetAmount: true,
-        currentSavedAmount: true,
-        isCompleted: true,
-        createdAt: true,
-      },
-    });
-
-    return NextResponse.json(
-      {
-        message: "Saving goal updated successfully.",
-        savingGoal: updatedSavingGoal,
-      },
-      { status: 200 }
-    );
-  } catch (error: unknown) {
-    console.error("Error updating saving goal:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "An unexpected error occurred.";
-    return NextResponse.json(
-      {
-        message: "Failed to update saving goal.",
-        error: errorMessage,
-      },
-      { status: 500 }
-    );
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
-export async function DELETE(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : authHeader || "";
-  const authResult = verifyToken(token);
-  if (!authResult || !authResult.userId) {
-    return NextResponse.json(
-      { message: "Authentication failed." },
-      { status: 401 }
-    );
-  }
-  const userId = authResult.userId;
-
-  try {
-    const { id } = await req.json();
-
-    if (!id) {
-      return NextResponse.json(
-        { message: "Saving goal id is required." },
-        { status: 400 }
-      );
-    }
-
-    const savingGoal = await prisma.savingGoal.findUnique({
-      where: { id: id, userId: userId },
-    });
-
-    if (!savingGoal) {
-      return NextResponse.json(
-        { message: "Saving goal not found or not owned by user." },
-        { status: 404 }
-      );
-    }
-
-    await prisma.savingGoal.delete({
-      where: { id: id },
-    });
-
-    return NextResponse.json(
-      { message: "Saving goal deleted successfully." },
-      { status: 200 }
-    );
-  } catch (error: unknown) {
-    console.error("Error deleting saving goal:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "An unexpected error occurred.";
-    return NextResponse.json(
-      {
-        message: "Failed to delete saving goal.",
-        error: errorMessage,
-      },
-      { status: 500 }
-    );
   } finally {
     await prisma.$disconnect();
   }
