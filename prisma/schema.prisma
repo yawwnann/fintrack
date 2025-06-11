@@ -102,7 +102,6 @@ model Income {
   updatedAt   DateTime  @updatedAt
 }
 
-// Model BudgetRecommendation (tidak berubah)
 model BudgetRecommendation {
   id          String    @id @default(auto()) @map("_id") @db.ObjectId
   userId      String    @db.ObjectId
@@ -112,5 +111,5 @@ model BudgetRecommendation {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@unique([month, userId], name: "month_userId_unique")
+@@unique([userId, month], name: "userId_month")
 }

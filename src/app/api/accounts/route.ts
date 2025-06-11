@@ -1,15 +1,10 @@
-// src/api/app/accounts/route.ts
-
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth"; // Import utilitas verifikasi JWT yang benar
-// Hapus: import { withCORS, handleCORSPreflight } from '@/lib/cors'; // Baris ini harus dihapus
+import { verifyToken } from "@/lib/auth";
 
 const prisma = new PrismaClient();
 
-// --- METHOD: POST (Buat Akun Baru) ---
 export async function POST(req: Request) {
-  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten: verifyToken(token))
   const authHeader =
     req.headers.get("authorization") || req.headers.get("Authorization");
   const token = authHeader?.startsWith("Bearer ")
@@ -22,7 +17,7 @@ export async function POST(req: Request) {
       { status: 401 }
     );
   }
-  const userId = payload.userId; // Dapatkan userId dari payload
+  const userId = payload.userId;
 
   try {
     const { name, initialBalance, type } = await req.json();
@@ -73,9 +68,8 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-    return response; // Kembalikan response langsung
+    return response;
   } catch (error: unknown) {
-    // Menggunakan 'unknown' untuk penanganan error yang lebih aman
     console.error("Error creating account:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -86,14 +80,13 @@ export async function POST(req: Request) {
       },
       { status: 500 }
     );
-    return errorResponse; // Kembalikan errorResponse langsung
+    return errorResponse;
   } finally {
     await prisma.$disconnect();
   }
 }
-// --- METHOD: GET (Ambil Daftar Akun) ---
+
 export async function GET(req: Request) {
-  // 1. Verifikasi Token & Dapatkan userId (menggunakan utilitas yang konsisten: verifyToken(token))
   const authHeader =
     req.headers.get("authorization") || req.headers.get("Authorization");
   const token = authHeader?.startsWith("Bearer ")
@@ -106,7 +99,7 @@ export async function GET(req: Request) {
       { status: 401 }
     );
   }
-  const userId = payload.userId; // Dapatkan userId dari payload
+  const userId = payload.userId;
 
   try {
     const userExists = await prisma.user.findUnique({
@@ -124,7 +117,7 @@ export async function GET(req: Request) {
     const accounts = await prisma.account.findMany({
       where: { userId: userId },
       orderBy: { name: "asc" },
-    }); // Return the accounts in a successful response
+    });
 
     const response = NextResponse.json(
       {
@@ -133,9 +126,8 @@ export async function GET(req: Request) {
       },
       { status: 200 }
     );
-    return response; // Kembalikan response langsung
+    return response;
   } catch (error: unknown) {
-    // Menggunakan 'unknown' untuk penanganan error yang lebih aman
     console.error("Error fetching accounts:", error);
     const errorMessage =
       error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -146,20 +138,19 @@ export async function GET(req: Request) {
       },
       { status: 500 }
     );
-    return errorResponse; // Kembalikan errorResponse langsung
+    return errorResponse;
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Tambahkan fungsi OPTIONS sederhana ini untuk dev lokal
 export async function OPTIONS() {
   return new NextResponse(null, {
-    status: 200, // Atau 204 No Content, 200 lebih sering digunakan di Next.js dev
+    status: 200,
     headers: {
-      "Access-Control-Allow-Origin": "http://localhost:5000", // Sesuaikan dengan origin frontend Anda
-      "Access-Control-Allow-Methods": "POST, GET, OPTIONS", // Hanya metode yang didukung oleh route ini
-      "Access-Control-Allow-Headers": "Content-Type, Authorization", // Header yang digunakan
+      "Access-Control-Allow-Origin": "http://localhost:5000",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Access-Control-Allow-Credentials": "true",
       "Access-Control-Max-Age": "86400",
     },

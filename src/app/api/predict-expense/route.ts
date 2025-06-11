@@ -26,22 +26,17 @@ export async function POST(request: Request) {
 
   try {
     const today = new Date();
-    const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, 1);
-    sixMonthsAgo.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
 
-    const startOfCurrentMonth = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      1
-    );
-    startOfCurrentMonth.setHours(0, 0, 0, 0);
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
 
     const expenses = await prisma.expense.findMany({
       where: {
         userId: userId,
         date: {
-          gte: sixMonthsAgo,
-          lt: startOfCurrentMonth,
+          gte: thirtyDaysAgo,
+          lt: today,
         },
       },
       orderBy: {
@@ -49,38 +44,31 @@ export async function POST(request: Request) {
       },
     });
 
-    const monthlyExpensesMap = new Map<string, number>();
+    const dailyExpensesMap = new Map();
     expenses.forEach((expense) => {
-      const monthKey = `${expense.date.getFullYear()}-${(
-        expense.date.getMonth() + 1
-      )
-        .toString()
-        .padStart(2, "0")}`;
-      monthlyExpensesMap.set(
-        monthKey,
-        (monthlyExpensesMap.get(monthKey) || 0) + expense.amount
+      const dayKey = expense.date.toISOString().split("T")[0];
+      dailyExpensesMap.set(
+        dayKey,
+        (dailyExpensesMap.get(dayKey) || 0) + expense.amount
       );
     });
 
-    const last6MonthsData: number[] = [];
-    for (let i = 6; i > 0; i--) {
-      const targetDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const monthKey = `${targetDate.getFullYear()}-${(
-        targetDate.getMonth() + 1
-      )
-        .toString()
-        .padStart(2, "0")}`;
-      last6MonthsData.push(monthlyExpensesMap.get(monthKey) || 0);
+    const last30DaysData = [];
+    for (let i = 0; i < 30; i++) {
+      const targetDate = new Date(thirtyDaysAgo);
+      targetDate.setDate(thirtyDaysAgo.getDate() + i);
+      const dayKey = targetDate.toISOString().split("T")[0];
+      last30DaysData.push(dailyExpensesMap.get(dayKey) || 0);
     }
 
-    const totalExpensesInPeriod = last6MonthsData.reduce(
+    const totalExpensesInPeriod = last30DaysData.reduce(
       (sum, amount) => sum + amount,
       0
     );
 
     if (totalExpensesInPeriod === 0) {
       console.log(
-        `No historical expenses found for user ${userId} in the last 6 months. Returning a default budget.`
+        `No historical expenses found for user ${userId} in the last 30 days. Returning a default budget.`
       );
       return NextResponse.json(
         {
@@ -92,31 +80,32 @@ export async function POST(request: Request) {
       );
     }
 
-    if (last6MonthsData.length !== 6) {
+    if (last30DaysData.length !== 30) {
       console.error(
-        "Error: Expected 6 months of data for ML model, but got:",
-        last6MonthsData.length
+        "Error: Expected 30 days of data for ML model, but got:",
+        last30DaysData.length
       );
       return NextResponse.json(
         {
           error:
-            "Failed to retrieve sufficient historical data for prediction (expected 6 months).",
+            "Failed to retrieve sufficient historical data for prediction (expected 30 days).",
         },
         { status: 500, headers: CORS_HEADERS }
       );
     }
 
-    console.log(`Sending to Flask ML API for user ${userId}:`, last6MonthsData);
+    console.log(`Sending to Flask ML API for user ${userId}:`, last30DaysData);
 
     const flaskApiUrl =
-      process.env.FLASK_API_URL || "http://localhost:5000/predict_expense";
+      process.env.FLASK_API_URL ||
+      "https://web-production-e3ea.up.railway.app/predict_expense";
 
     const flaskResponse = await fetch(flaskApiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ last_6_months_data: last6MonthsData }),
+      body: JSON.stringify({ last_n_days_data: last30DaysData }),
     });
 
     if (!flaskResponse.ok) {
@@ -140,43 +129,31 @@ export async function POST(request: Request) {
         );
         nextMonth.setHours(0, 0, 0, 0);
 
-        const existingBudget = await prisma.budgetRecommendation.findUnique({
+        await prisma.budgetRecommendation.upsert({
           where: {
-            month_userId_unique: {
-              month: nextMonth,
+            userId_month: {
               userId: userId,
+              month: nextMonth,
             },
+          },
+
+          update: {
+            // Jika entri sudah ada, perbarui amount-nya
+            amount: predictedExpense,
+          },
+          create: {
+            // Jika entri belum ada, buat yang baru
+            userId: userId,
+            month: nextMonth,
+            amount: predictedExpense,
           },
         });
 
-        if (existingBudget) {
-          await prisma.budgetRecommendation.update({
-            where: {
-              id: existingBudget.id,
-            },
-            data: {
-              amount: predictedExpense,
-            },
-          });
-          console.log(
-            `Updated budget recommendation for ${
-              nextMonth.toISOString().split("T")[0]
-            } (User: ${userId}): ${predictedExpense}`
-          );
-        } else {
-          await prisma.budgetRecommendation.create({
-            data: {
-              userId: userId,
-              month: nextMonth,
-              amount: predictedExpense,
-            },
-          });
-          console.log(
-            `Created new budget recommendation for ${
-              nextMonth.toISOString().split("T")[0]
-            } (User: ${userId}): ${predictedExpense}`
-          );
-        }
+        console.log(
+          `Budget recommendation for ${
+            nextMonth.toISOString().split("T")[0]
+          } (User: ${userId}) updated/created: ${predictedExpense}`
+        );
       } catch (dbError) {
         console.error(
           "Error saving budget recommendation to database:",
@@ -189,7 +166,7 @@ export async function POST(request: Request) {
       status: 200,
       headers: CORS_HEADERS,
     });
-  } catch (error: unknown) {
+  } catch (error) {
     console.error("Error in predict-expense API route:", error);
     return NextResponse.json(
       {
