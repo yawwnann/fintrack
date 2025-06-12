@@ -8,7 +8,7 @@ const nextConfig = {
         headers: [
           {
             key: "Access-Control-Allow-Origin",
-            value: "https://relaxed-vacherin-3e7bf6.netlify.app",
+            value: "https://fintrack-financial.netlify.app",
           }, // Pastikan ini origin frontend Anda
           {
             key: "Access-Control-Allow-Methods",

@@ -4,45 +4,47 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const allowedOrigins = [
-  "https://relaxed-vacherin-3e7bf6.netlify.app",
-  "https://relaxed-vacherin-3e7bf6.netlify.app/",
+  "https://fintrack-financial.netlify.app",
+  "https://fintrack-financial.netlify.app/",
   "http://localhost:3000",
   "http://localhost:3001",
 ];
 
 export function middleware(request: NextRequest) {
-  console.log("Middleware executed for:", request.url);
-  console.log("Request Method:", request.method);
-  console.log("Request Origin:", request.headers.get("origin"));
-
   const response = NextResponse.next();
-
   const origin = request.headers.get("origin");
-  if (origin) {
-    // Remove trailing slash for comparison
-    const normalizedOrigin = origin.replace(/\/$/, "");
-    const isAllowed = allowedOrigins.some(
-      (allowed) => allowed.replace(/\/$/, "") === normalizedOrigin
-    );
 
-    if (isAllowed) {
+  // Handle preflight requests
+  if (request.method === "OPTIONS") {
+    if (origin && allowedOrigins.includes(origin)) {
       response.headers.set("Access-Control-Allow-Origin", origin);
+      response.headers.set(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS"
+      );
+      response.headers.set(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization"
+      );
+      response.headers.set("Access-Control-Allow-Credentials", "true");
+      response.headers.set("Access-Control-Max-Age", "86400");
+      return new NextResponse(null, { status: 204, headers: response.headers });
     }
+    return new NextResponse(null, { status: 403 });
   }
 
-  response.headers.set(
-    "Access-Control-Allow-Methods",
-    "GET,DELETE,PATCH,POST,PUT,OPTIONS"
-  );
-  response.headers.set(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, X-Api-Version"
-  );
-  response.headers.set("Access-Control-Allow-Credentials", "true");
-  response.headers.set("Access-Control-Max-Age", "86400");
-
-  if (request.method === "OPTIONS") {
-    return new NextResponse(null, { status: 204, headers: response.headers });
+  // Handle actual requests
+  if (origin && allowedOrigins.includes(origin)) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+    response.headers.set(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, OPTIONS"
+    );
+    response.headers.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization"
+    );
+    response.headers.set("Access-Control-Allow-Credentials", "true");
   }
 
   return response;
